@@ -4,17 +4,17 @@
 #include <QFile>
 
 const int TWO_MINUTES = 120;
-const QTime START_TIME(0,0,0);
-const QTime END_TIME(23,59,59);
+const QTime START_TIME(0, 0, 0);
+const QTime END_TIME(23, 59, 59);
 
 
-struct TransportInfo{
-    QDateTime  date_time;
+struct TransportInfo {
+    QDateTime date_time;
     QString id;
     int speed{};
 };
 
-struct DriveInfo{
+struct DriveInfo {
 
     QString id;
     QTime travel_time;
@@ -42,21 +42,21 @@ struct DriveInfo{
 
     QString toString() const {
 
-            return QString("id: %1\nвремя пути: %2\nвремя стоянки: %3\n----\n")
-                    .arg(id)
-                    .arg(travel_time.toString())
-                    .arg(parking_time.toString());
-        }
+        return QString("id: %1\nвремя в пути: %2h\nвремя стоянки: %3h\n----\n")
+                .arg(id)
+                .arg(round(10.0 * (travel_time.hour() + (double) travel_time.minute() / 60)) / 10.0)
+                .arg(round(10.0 * (parking_time.hour() + (double) parking_time.minute() / 60)) / 10.0);
+    }
 
 };
 
-uint qHash(const DriveInfo &key)
-{
+uint qHash(const DriveInfo &key) {
     return qHash(key.id);
 }
 
 //Функция, которая считывает .csv файл
-QVector<TransportInfo> parseFile(const QString &filePath){
+QVector<TransportInfo> parseFile(const QString &filePath) {
+    qDebug() << "Start parse file from" << filePath;
 
     QVector<TransportInfo> transport_vector;
 
@@ -87,20 +87,32 @@ QVector<TransportInfo> parseFile(const QString &filePath){
 
     file.close();
 
+    qDebug() << "End parse file";
+
     return transport_vector;
 };
 
 //Функция, которая считает время отсановки и время передвижения транспорта
-QHash<QString,DriveInfo> calcDrivesStat(const QVector<TransportInfo>& transport_vector){
-    QHash<QString,DriveInfo> drive_hash;
+QHash<QString, DriveInfo> calcDrivesStat(const QVector<TransportInfo> &transport_vector) {
 
-    for (const auto & i : transport_vector) {
+    qDebug() << "Start calculation drive statistic";
+
+    QHash<QString, DriveInfo> drive_hash;
+
+    for (const auto &i: transport_vector) {
         DriveInfo drive;
 
-        if(!drive_hash.contains(i.id)) {
+        if (!drive_hash.contains(i.id)) {
             drive.id = i.id;
-            drive.parking_time = QTime(0,0,0);
-            drive.travel_time = QTime(0,0,0);
+            drive.parking_time = QTime(0, 0, 0);
+            drive.travel_time = QTime(0, 0, 0);
+            // учет времени от начала в 00:00:00 до первых данных
+            auto time_difference = START_TIME.secsTo(i.date_time.time());
+            if (time_difference > TWO_MINUTES) {
+                drive.parking_time = drive.parking_time.addSecs(time_difference);
+            } else {
+                drive.travel_time = drive.travel_time.addSecs(time_difference);
+            }
 
             drive.prev_datetime = i.date_time;
             drive.prev_speed = i.speed;
@@ -118,19 +130,25 @@ QHash<QString,DriveInfo> calcDrivesStat(const QVector<TransportInfo>& transport_
                 drive.zero_speed_time = i.date_time;
                 drive.prev_speed = i.speed;
                 drive.prev_datetime = i.date_time;
+
+                drive_hash.insert(i.id, drive);
+                continue;
             }
 
             //стоял - стоит
             if (i.speed == 0 && drive.prev_speed == 0) {
                 drive.prev_speed = i.speed;
                 drive.prev_datetime = i.date_time;
+
+                drive_hash.insert(i.id, drive);
+                continue;
             }
 
             //стоял - двигается
             if (i.speed != 0 && drive.prev_speed == 0) {
                 auto zero_time_difference = drive.zero_speed_time.time().secsTo(i.date_time.time());
 
-                if(zero_time_difference > TWO_MINUTES){
+                if (zero_time_difference > TWO_MINUTES) {
                     drive.parking_time = drive.parking_time.addSecs(zero_time_difference);
                 } else {
                     drive.travel_time = drive.travel_time.addSecs(zero_time_difference);
@@ -138,6 +156,9 @@ QHash<QString,DriveInfo> calcDrivesStat(const QVector<TransportInfo>& transport_
 
                 drive.prev_speed = i.speed;
                 drive.prev_datetime = i.date_time;
+
+                drive_hash.insert(i.id, drive);
+                continue;
             }
 
             //двигался - двигается
@@ -145,18 +166,31 @@ QHash<QString,DriveInfo> calcDrivesStat(const QVector<TransportInfo>& transport_
                 drive.travel_time = drive.travel_time.addSecs(drive.prev_datetime.time().secsTo(i.date_time.time()));
                 drive.prev_speed = i.speed;
                 drive.prev_datetime = i.date_time;
+
+                drive_hash.insert(i.id, drive);
+                continue;
             }
 
-            drive_hash.insert(i.id,drive);
         }
 
 
     }
 
-    for(auto & di : drive_hash) {
-        auto sumTime = di.parking_time.addSecs(START_TIME.secsTo(di.travel_time));
-        auto time_difference = sumTime.secsTo(END_TIME);
-        if(time_difference > TWO_MINUTES){
+    for (auto &di: drive_hash) {
+       //учет времени в том случае, когда зафиксировались последние данные со нулевой скоростью
+        if (di.zero_speed_time != di.prev_datetime && di.prev_speed == 0) {
+            auto zero_time_difference = di.zero_speed_time.time().secsTo(di.prev_datetime.time());
+
+            if (zero_time_difference > TWO_MINUTES) {
+                di.parking_time = di.parking_time.addSecs(zero_time_difference);
+            } else {
+                di.travel_time = di.travel_time.addSecs(zero_time_difference);
+            }
+
+        }
+        // учет времени оставшегося до 23:59:59
+        auto time_difference = di.prev_datetime.time().secsTo(END_TIME);
+        if (time_difference > TWO_MINUTES) {
             di.parking_time = di.parking_time.addSecs(time_difference);
         } else {
             di.travel_time = di.travel_time.addSecs(time_difference);
@@ -164,11 +198,14 @@ QHash<QString,DriveInfo> calcDrivesStat(const QVector<TransportInfo>& transport_
 
     }
 
+    qDebug() << "End calculation drive statistic";
+
     return drive_hash;
 };
 
 //Функция, которая записывает статистику в .txt файл
 void writeQHashToFile(const QHash<QString, DriveInfo> &hash, const QString &fileName) {
+    qDebug() << "Start write output into" << fileName;
     QFile file(fileName);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         qDebug() << "Не удалось открыть файл для записи:" << fileName;
@@ -177,11 +214,13 @@ void writeQHashToFile(const QHash<QString, DriveInfo> &hash, const QString &file
 
     QTextStream out(&file);
     QHash<QString, DriveInfo>::const_iterator it;
+    out << "----\n";
     for (it = hash.constBegin(); it != hash.constEnd(); ++it) {
         out << it.value().toString();
     }
 
     file.close();
+    qDebug() << "End write output";
 }
 
 
@@ -190,15 +229,18 @@ int main(int argc, char *argv[]) {
 
     QStringList arguments = QCoreApplication::arguments();
 
-    QString pathIn = arguments.at(1);
+    const QString &pathIn = arguments.at(1);
 
-    QString pathOut = arguments.at(2);
+    const QString &pathOut = arguments.at(2);
+
+    qDebug() << "Start program";
 
     QVector<TransportInfo> test_transport = parseFile(pathIn);
 
-    QHash<QString,DriveInfo> test_hash = calcDrivesStat(test_transport);
+    QHash<QString, DriveInfo> test_hash = calcDrivesStat(test_transport);
 
-    writeQHashToFile(test_hash,pathOut);
+    writeQHashToFile(test_hash, pathOut);
 
+    qDebug() << "End program";
     return 0;
 }

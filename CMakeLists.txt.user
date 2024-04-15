@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 8.0.2, 2024-04-14T23:31:42. -->
+<!-- Written by QtCreator 8.0.2, 2024-04-15T20:42:44. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -157,6 +157,7 @@
        <value type="QString">all</value>
       </valuelist>
       <value type="bool" key="ProjectExplorer.BuildStep.Enabled">true</value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">Сборка</value>
       <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">CMakeProjectManager.MakeStep</value>
      </valuemap>
      <value type="qlonglong" key="ProjectExplorer.BuildStepList.StepsCount">1</value>
@@ -170,6 +171,7 @@
        <value type="QString">clean</value>
       </valuelist>
       <value type="bool" key="ProjectExplorer.BuildStep.Enabled">true</value>
+      <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">Сборка</value>
       <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">CMakeProjectManager.MakeStep</value>
      </valuemap>
      <value type="qlonglong" key="ProjectExplorer.BuildStepList.StepsCount">1</value>
@@ -345,7 +347,7 @@
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">starline</value>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">CMakeProjectManager.CMakeRunConfiguration.starline</value>
     <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">starline</value>
-    <value type="QString" key="RunConfiguration.Arguments">C:/Users/Maria/Documents/dev_dev/untitled/log.csv C:/Users/Maria/Documents/dev_dev/sex.txt</value>
+    <value type="QString" key="RunConfiguration.Arguments">C:/Users/Maria/Documents/dev_dev/starline_test/starline/log.csv C:/Users/Maria/Documents/dev_dev/starline_test/starline/result.txt</value>
     <value type="bool" key="RunConfiguration.UseCppDebugger">false</value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
     <value type="bool" key="RunConfiguration.UseLibrarySearchPath">true</value>
